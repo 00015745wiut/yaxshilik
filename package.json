@@ -1,0 +1,21 @@
+{
+  "name": "yaxshilik",
+  "version": "1.0.0",
+  "description": "Yaxshilik.uz — Charity Donation Platform",
+  "private": true,
+  "scripts": {
+    "install:all": "cd server && npm install && cd ../client && npm install",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "db:migrate": "cd server && npm run db:migrate",
+    "db:seed": "cd server && npm run db:seed",
+    "db:setup": "cd server && npm run db:migrate && npm run db:seed",
+    "db:reset": "cd server && npm run db:reset",
+    "db:placeholders": "cd server && node db/generate-placeholders.js",
+    "build": "cd client && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.0"
+  }
+}
