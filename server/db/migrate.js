@@ -52,10 +52,27 @@ async function migrate() {
         amount          DECIMAL(12,2) NOT NULL CHECK (amount > 0),
         message         TEXT,
         transaction_ref VARCHAR(100) UNIQUE NOT NULL,
+        status          VARCHAR(20) DEFAULT 'paid' CHECK (status IN ('pending', 'paid', 'failed')),
+        invoice_uuid    VARCHAR(100),
+        card_pan        VARCHAR(32),
+        ps              VARCHAR(20),
+        paid_at         TIMESTAMP,
         created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
     console.log('  ✓ donations');
+
+    // Payment columns (idempotent — also upgrades pre-existing donations tables).
+    // Default 'paid' so legacy/seed rows count as completed; the checkout flow
+    // inserts new rows as 'pending' until the payment provider confirms them.
+    await client.query(`
+      ALTER TABLE donations ADD COLUMN IF NOT EXISTS status       VARCHAR(20) DEFAULT 'paid';
+      ALTER TABLE donations ADD COLUMN IF NOT EXISTS invoice_uuid VARCHAR(100);
+      ALTER TABLE donations ADD COLUMN IF NOT EXISTS card_pan     VARCHAR(32);
+      ALTER TABLE donations ADD COLUMN IF NOT EXISTS ps           VARCHAR(20);
+      ALTER TABLE donations ADD COLUMN IF NOT EXISTS paid_at      TIMESTAMP;
+    `);
+    console.log('  ✓ donations payment columns');
 
     // Indexes
     await client.query(`
@@ -63,6 +80,7 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS idx_donations_case_id     ON donations(case_id);
       CREATE INDEX IF NOT EXISTS idx_cases_category_id     ON cases(category_id);
       CREATE INDEX IF NOT EXISTS idx_cases_status          ON cases(status);
+      CREATE INDEX IF NOT EXISTS idx_donations_status      ON donations(status);
     `);
     console.log('  ✓ indexes');
 

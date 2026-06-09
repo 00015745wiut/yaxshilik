@@ -2,7 +2,8 @@ const { Router } = require('express');
 const { body, param } = require('express-validator');
 const { authenticate, authorizeAdmin } = require('../middleware/auth');
 const {
-  createDonation,
+  createCheckout,
+  getDonationStatus,
   getMyDonations,
   getDonationsByCase,
   getMyStats,
@@ -27,15 +28,24 @@ const donationValidation = [
 ];
 
 // Specific literal paths must come before /:param routes
-router.get('/my/stats', authenticate,              getMyStats);
-router.get('/my',       authenticate,              getMyDonations);
-router.get('/recent',   authenticate, authorizeAdmin, getRecentDonations);
+router.get('/my/stats', authenticate,                  getMyStats);
+router.get('/my',       authenticate,                  getMyDonations);
+router.get('/recent',   authenticate, authorizeAdmin,  getRecentDonations);
 
+// Start a payment: creates a pending donation + Multicard invoice
 router.post(
-  '/',
+  '/checkout',
   authenticate,
   donationValidation,
-  createDonation
+  createCheckout
+);
+
+// Poll a donation's payment status (owner only)
+router.get(
+  '/:id/status',
+  authenticate,
+  param('id').isInt({ gt: 0 }).withMessage('Invalid donation ID'),
+  getDonationStatus
 );
 
 router.get(

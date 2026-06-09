@@ -12,6 +12,7 @@ import CaseDetailPage from './pages/CaseDetailPage';
 import LoginPage      from './pages/LoginPage';
 import RegisterPage   from './pages/RegisterPage';
 import DonorDashboard from './pages/DonorDashboard';
+import PaymentReturnPage from './pages/PaymentReturnPage';
 import AdminDashboard from './pages/AdminDashboard';
 import CreateCasePage from './pages/CreateCasePage';
 import EditCasePage   from './pages/EditCasePage';
@@ -32,6 +33,13 @@ export default function App() {
                 <Route path="/cases/:id" element={<CaseDetailPage />} />
                 <Route path="/login"     element={<LoginPage />} />
                 <Route path="/register"  element={<RegisterPage />} />
+
+                {/* Payment return landing (any signed-in user; ownership checked by API) */}
+                <Route path="/donations/return" element={
+                  <ProtectedRoute>
+                    <PaymentReturnPage />
+                  </ProtectedRoute>
+                } />
 
                 {/* Donor only — admins are redirected to /admin */}
                 <Route path="/dashboard" element={

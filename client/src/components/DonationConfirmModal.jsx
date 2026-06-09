@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { formatCurrency } from '../utils/format';
 
-export default function DonationConfirmModal({ caseTitle, amount, message, onCancel, onConfirm }) {
+export default function DonationConfirmModal({ caseTitle, amount, message, confirmLabel = 'Confirm Donation', onCancel, onConfirm }) {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
 
@@ -102,7 +102,7 @@ export default function DonationConfirmModal({ caseTitle, amount, message, onCan
                 </svg>
                 Processing…
               </>
-            ) : 'Confirm Donation'}
+            ) : confirmLabel}
           </button>
         </div>
       </div>

@@ -50,7 +50,7 @@ function DetailSkeleton() {
 // Donation form
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DonationForm({ caseData, onSuccess }) {
+function DonationForm({ caseData }) {
   const { user } = useAuth();
 
   const [amount, setAmount]         = useState('');
@@ -90,11 +90,16 @@ function DonationForm({ caseData, onSuccess }) {
   }
 
   async function handleConfirm() {
-    const { data } = await donationsService.createDonation(
+    const { data } = await donationsService.checkout(
       caseData.id, Number(amount), message || undefined
     );
-    setShowModal(false);
-    onSuccess(data);
+    if (!data?.checkout_url) {
+      throw new Error('Could not start the payment. Please try again.');
+    }
+    // Hand off to Multicard's hosted checkout. The browser navigates away; the
+    // never-resolving promise keeps the modal in its loading state until then.
+    window.location.assign(data.checkout_url);
+    await new Promise(() => {});
   }
 
   return (
@@ -165,13 +170,22 @@ function DonationForm({ caseData, onSuccess }) {
 
         {/* CTA */}
         {user ? (
-          <button
-            onClick={handleDonateClick}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold
-              rounded-lg transition-colors text-base"
-          >
-            Donate Now
-          </button>
+          <>
+            <button
+              onClick={handleDonateClick}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold
+                rounded-lg transition-colors text-base"
+            >
+              Donate Now
+            </button>
+            <p className="flex items-center justify-center gap-1.5 text-xs text-gray-400 -mt-1">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              Secure payment via Multicard
+            </p>
+          </>
         ) : (
           <Link
             to="/login"
@@ -188,108 +202,11 @@ function DonationForm({ caseData, onSuccess }) {
           caseTitle={caseData.title}
           amount={Number(amount)}
           message={message}
+          confirmLabel="Proceed to Payment"
           onCancel={() => setShowModal(false)}
           onConfirm={handleConfirm}
         />
       )}
-    </>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Success screen
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SuccessScreen({ donation, onReset }) {
-  const printDate = new Date(donation.created_at).toLocaleString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
-
-  return (
-    <>
-      <div className="text-center space-y-4 print:hidden">
-        {/* Animated checkmark */}
-        <div className="flex justify-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center
-            animate-[bounce_0.6s_ease-out]">
-            <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-xl font-bold text-gray-800">Thank You!</h3>
-          <p className="text-gray-600 text-sm mt-1">
-            Your donation of{' '}
-            <span className="font-semibold text-blue-600">{formatCurrency(donation.amount)}</span>
-            {' '}has been received.
-          </p>
-        </div>
-
-        {/* Receipt info */}
-        <div className="bg-gray-50 rounded-xl p-4 text-left space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-500">Reference</span>
-            <span className="font-mono font-semibold text-gray-800 text-xs">
-              {donation.transaction_ref}
-            </span>
-          </div>
-          <div className="border-t border-gray-200" />
-          <div className="flex justify-between">
-            <span className="text-gray-500">Date</span>
-            <span className="text-gray-800">{printDate}</span>
-          </div>
-        </div>
-
-        <div className="space-y-2 pt-1">
-          <button
-            onClick={onReset}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold
-              rounded-lg text-sm transition-colors"
-          >
-            Make Another Donation
-          </button>
-          <Link
-            to="/dashboard"
-            className="block w-full py-2.5 border border-gray-300 hover:bg-gray-50 text-gray-700
-              font-semibold rounded-lg text-sm transition-colors text-center"
-          >
-            View My Donations
-          </Link>
-          <button
-            onClick={() => window.print()}
-            className="w-full py-2.5 border border-gray-300 hover:bg-gray-50 text-gray-700
-              font-semibold rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            Print Receipt
-          </button>
-        </div>
-      </div>
-
-      {/* Print-only receipt */}
-      <div className="hidden print:block text-sm text-gray-800">
-        <h2 className="text-xl font-bold mb-4">Donation Receipt — Yaxshilik.uz</h2>
-        <table className="w-full border-collapse">
-          <tbody>
-            {[
-              ['Amount',    formatCurrency(donation.amount)],
-              ['Reference', donation.transaction_ref],
-              ['Date',      printDate],
-            ].map(([label, value]) => (
-              <tr key={label} className="border-b border-gray-200">
-                <td className="py-2 font-semibold w-32">{label}</td>
-                <td className="py-2">{value}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </>
   );
 }
@@ -303,7 +220,6 @@ export default function CaseDetailPage() {
   const [caseData, setCaseData]         = useState(null);
   const [loading, setLoading]           = useState(true);
   const [notFound, setNotFound]         = useState(false);
-  const [successDonation, setSuccessDonation] = useState(null);
 
   const fetchCase = useCallback(() => {
     casesService.getCaseById(id)
@@ -313,15 +229,6 @@ export default function CaseDetailPage() {
   }, [id]);
 
   useEffect(() => { fetchCase(); }, [fetchCase]);
-
-  function handleDonationSuccess(donation) {
-    setSuccessDonation(donation);
-    fetchCase(); // refresh progress bar + recent donations
-  }
-
-  function handleReset() {
-    setSuccessDonation(null);
-  }
 
   if (loading) return <DetailSkeleton />;
 
@@ -473,10 +380,8 @@ export default function CaseDetailPage() {
                 <p className="font-bold text-green-700">Goal Reached!</p>
                 <p className="text-green-600 text-sm mt-1">Thank you to all donors!</p>
               </div>
-            ) : successDonation ? (
-              <SuccessScreen donation={successDonation} onReset={handleReset} />
             ) : (
-              <DonationForm caseData={caseData} onSuccess={handleDonationSuccess} />
+              <DonationForm caseData={caseData} />
             )}
           </div>
         </aside>

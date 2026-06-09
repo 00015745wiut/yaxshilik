@@ -13,7 +13,7 @@ router.get('/public', async (req, res, next) => {
         FROM cases
         WHERE status IN ('active', 'completed')
       `),
-      pool.query(`SELECT COUNT(DISTINCT user_id) AS total FROM donations`),
+      pool.query(`SELECT COUNT(DISTINCT user_id) AS total FROM donations WHERE status = 'paid'`),
     ]);
 
     res.json({

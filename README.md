@@ -152,15 +152,41 @@ yaxshilik/
 | PUT    | /api/cases/:id           | Admin  | Update a case                   |
 | DELETE | /api/cases/:id           | Admin  | Close a case                    |
 | GET    | /api/cases/admin/stats   | Admin  | Admin dashboard statistics      |
-| POST   | /api/donations           | Bearer | Submit a donation               |
+| POST   | /api/donations/checkout  | Bearer | Start a payment (returns checkout_url) |
+| GET    | /api/donations/:id/status| Bearer | Poll a donation's payment status |
 | GET    | /api/donations/my        | Bearer | Donor's donation history        |
 | GET    | /api/donations/my/stats  | Bearer | Donor's aggregate stats         |
 | GET    | /api/donations/recent    | Admin  | 20 most recent donations        |
+| POST   | /api/payments/callback   | —      | Multicard callback (signature-verified) |
 | GET    | /api/categories          | —      | List all categories             |
 | GET    | /api/stats/public        | —      | Public platform statistics      |
 | GET    | /api/health              | —      | Health check                    |
 
 ---
+
+## Payments (Multicard / Rahmat)
+
+Donations are paid through the **Multicard** hosted-checkout gateway. The app ships configured for Multicard's **sandbox** so you can demo a full payment without real money.
+
+**How it works:** confirming a donation creates a `pending` donation and a Multicard invoice, then redirects the donor to Multicard's checkout page. After paying, the donor returns to `/donations/return`, which polls the backend until the payment is confirmed (the backend reconciles against Multicard). A donation only credits its case once it reaches `paid`.
+
+**Test a payment:**
+1. Sign in as the demo donor, open any active case, choose an amount, and confirm.
+2. On the Multicard page, pay with the sandbox test card:
+   - Card **8600 5333 6409 8829**, expiry **28/06**, OTP **112233**
+3. You'll be returned to the app and see the confirmation + printable receipt.
+
+**Configuration** (`server/.env` — see `.env.example`):
+
+| Variable | Purpose |
+|----------|---------|
+| `MULTICARD_BASE_URL` | `https://dev-mesh.multicard.uz` (sandbox) or `https://mesh.multicard.uz` (prod) |
+| `MULTICARD_APPLICATION_ID` / `MULTICARD_SECRET` | Gateway credentials |
+| `MULTICARD_STORE_ID` | Store/register ID |
+| `MULTICARD_SEND_OFD`, `MULTICARD_OFD_*` | Fiscal-receipt (OFD) data; set `MULTICARD_SEND_OFD=false` to omit |
+| `SERVER_URL` | Public URL of this server, used to build the callback URL |
+
+> On `localhost` the gateway's server-to-server callback can't reach you, so the app confirms payments by **polling** instead. To receive real callbacks, expose the server (e.g. an ngrok tunnel) and set `SERVER_URL` to the public URL. Replace the sandbox credentials with your production values before going live.
 
 ## Production Build
 

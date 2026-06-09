@@ -64,7 +64,7 @@ async function getCaseById(req, res) {
     `SELECT d.id, d.amount, d.message, d.created_at, u.full_name AS donor_name
      FROM donations d
      LEFT JOIN users u ON u.id = d.user_id
-     WHERE d.case_id = $1
+     WHERE d.case_id = $1 AND d.status = 'paid'
      ORDER BY d.created_at DESC
      LIMIT 10`,
     [id]
@@ -154,8 +154,8 @@ async function getAdminStats(req, res) {
   const [activeCases, completedCases, donationStats, donorCount, recentCases] = await Promise.all([
     pool.query(`SELECT COUNT(*) AS total FROM cases WHERE status = 'active'`),
     pool.query(`SELECT COUNT(*) AS total FROM cases WHERE status = 'completed'`),
-    pool.query(`SELECT COALESCE(SUM(amount), 0) AS total FROM donations`),
-    pool.query(`SELECT COUNT(DISTINCT user_id) AS total FROM donations`),
+    pool.query(`SELECT COALESCE(SUM(amount), 0) AS total FROM donations WHERE status = 'paid'`),
+    pool.query(`SELECT COUNT(DISTINCT user_id) AS total FROM donations WHERE status = 'paid'`),
     pool.query(
       `SELECT c.id, c.title, c.status, c.raised_amount, c.goal_amount, c.updated_at,
               cat.name AS category_name

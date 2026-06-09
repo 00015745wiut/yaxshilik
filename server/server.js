@@ -50,6 +50,7 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Da
 app.use('/api/auth',       require('./routes/authRoutes'));
 app.use('/api/cases',      require('./routes/casesRoutes'));
 app.use('/api/donations',  require('./routes/donationsRoutes'));
+app.use('/api/payments',   require('./routes/paymentsRoutes'));
 app.use('/api/categories', require('./routes/categoriesRoutes'));
 app.use('/api/stats',      require('./routes/statsRoutes'));
 
