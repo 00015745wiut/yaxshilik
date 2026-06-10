@@ -104,6 +104,11 @@ export default function EditCasePage() {
     navigate('/admin');
   }
 
+  async function handleDeleteProof(proofId) {
+    await casesService.deleteProof(id, proofId);
+    addToast('Proof removed');
+  }
+
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-10 animate-pulse space-y-6">
@@ -166,6 +171,7 @@ export default function EditCasePage() {
           submitLabel="Update Case"
           isEdit={true}
           onSubmit={handleSubmit}
+          onDeleteProof={handleDeleteProof}
           extraActions={caseData.status !== 'closed' ? deleteButton : null}
         />
       </div>

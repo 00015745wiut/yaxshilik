@@ -5,6 +5,25 @@ const MAX_FILE_SIZE   = 5 * 1024 * 1024;
 const ALLOWED_TYPES   = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const STATUS_OPTIONS  = ['active', 'completed', 'closed'];
 
+const SERVER_ORIGIN     = 'http://localhost:5000';
+const PROOF_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const PROOF_DOC_TYPES   = [...PROOF_IMAGE_TYPES, 'application/pdf'];
+const PROOF_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
+const MAX_PROOF_SIZE    = 50 * 1024 * 1024; // 50 MB
+
+// Categorised proof uploads — field names match the server's multer config.
+const PROOF_CATEGORIES = [
+  { key: 'documents', field: 'proof_documents', label: 'Official documents', accept: '.pdf,.jpg,.jpeg,.png,.webp', hint: 'PDF or scan — medical report, government letter, invoice', allowed: PROOF_DOC_TYPES },
+  { key: 'photos',    field: 'proof_photos',    label: 'Photos',             accept: '.jpg,.jpeg,.png,.webp',       hint: 'Photo evidence of the person or situation',           allowed: PROOF_IMAGE_TYPES },
+  { key: 'videos',    field: 'proof_videos',    label: 'Video',              accept: '.mp4,.webm,.mov',             hint: 'Short clip (max 50 MB)',                              allowed: PROOF_VIDEO_TYPES },
+];
+
+const PROOF_BADGE = {
+  document: 'bg-blue-100 text-blue-700',
+  photo:    'bg-green-100 text-green-700',
+  video:    'bg-purple-100 text-purple-700',
+};
+
 function validate(fields, isEdit) {
   const errors = {};
   const title = (fields.title || '').trim();
@@ -32,6 +51,7 @@ export default function CaseForm({
   initialData = {},
   categories  = [],
   onSubmit,
+  onDeleteProof,
   submitLabel = 'Submit',
   isEdit      = false,
   extraActions,
@@ -53,6 +73,12 @@ export default function CaseForm({
   const [serverError, setServerError] = useState('');
   const fileInputRef = useRef(null);
 
+  // Proofs: new files staged per category + existing (already-saved) proofs.
+  const [proofFiles, setProofFiles]   = useState({ documents: [], photos: [], videos: [] });
+  const [proofError, setProofError]   = useState('');
+  const [existingProofs, setExistingProofs]   = useState(initialData.proofs ?? []);
+  const [deletingProofId, setDeletingProofId] = useState(null);
+
   // Sync initial data if parent fetches async (edit page)
   useEffect(() => {
     if (initialData.title) {
@@ -64,8 +90,9 @@ export default function CaseForm({
         status:      initialData.status      ?? 'active',
       });
       if (initialData.image_url) {
-        setImagePreview(`http://localhost:5000${initialData.image_url}`);
+        setImagePreview(`${SERVER_ORIGIN}${initialData.image_url}`);
       }
+      setExistingProofs(initialData.proofs ?? []);
     }
   }, [initialData.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -112,6 +139,36 @@ export default function CaseForm({
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
+  function addProofFiles(catKey, fileList, allowed) {
+    const accepted = [];
+    for (const f of Array.from(fileList || [])) {
+      if (!allowed.includes(f.type)) { setProofError(`"${f.name}" is not an accepted file type`); continue; }
+      if (f.size > MAX_PROOF_SIZE)   { setProofError(`"${f.name}" exceeds the 50 MB limit`);       continue; }
+      accepted.push(f);
+    }
+    if (accepted.length) {
+      setProofError('');
+      setProofFiles((p) => ({ ...p, [catKey]: [...p[catKey], ...accepted] }));
+    }
+  }
+
+  function removeProofFile(catKey, idx) {
+    setProofFiles((p) => ({ ...p, [catKey]: p[catKey].filter((_, i) => i !== idx) }));
+  }
+
+  async function handleDeleteExisting(proofId) {
+    if (!onDeleteProof) return;
+    setDeletingProofId(proofId);
+    try {
+      await onDeleteProof(proofId);
+      setExistingProofs((list) => list.filter((p) => p.id !== proofId));
+    } catch {
+      setProofError('Could not remove that proof. Please try again.');
+    } finally {
+      setDeletingProofId(null);
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     const allTouched = Object.fromEntries(
@@ -127,6 +184,13 @@ export default function CaseForm({
     formData.append('goal_amount', fields.goal_amount);
     if (isEdit) formData.append('status', fields.status);
     if (imageFile) formData.append('image', imageFile);
+
+    // Append staged proof files under their server field names.
+    for (const cat of PROOF_CATEGORIES) {
+      for (const file of proofFiles[cat.key]) {
+        formData.append(cat.field, file);
+      }
+    }
 
     setSubmitting(true);
     setServerError('');
@@ -330,6 +394,103 @@ export default function CaseForm({
           onChange={handleFileInput}
         />
         {imageError && <p className="mt-1.5 text-xs text-red-600">{imageError}</p>}
+      </div>
+
+      {/* Proof & verification */}
+      <div className="border-t border-gray-100 pt-6">
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            Proof &amp; verification
+          </h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Upload reviewed evidence that this case is genuine — these files are shown publicly to donors.
+          </p>
+        </div>
+
+        {/* Already-saved proofs (edit) */}
+        {existingProofs.length > 0 && (
+          <div className="mb-5">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Current proofs</p>
+            <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+              {existingProofs.map((p) => (
+                <li key={p.id} className="flex items-center gap-3 px-3 py-2.5 bg-white">
+                  <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded ${PROOF_BADGE[p.type]}`}>
+                    {p.type}
+                  </span>
+                  <a
+                    href={`${SERVER_ORIGIN}${p.file_url}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-blue-600 hover:underline truncate flex-1"
+                  >
+                    {p.file_url.split('/').pop()}
+                  </a>
+                  {onDeleteProof && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteExisting(p.id)}
+                      disabled={deletingProofId === p.id}
+                      className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50 shrink-0"
+                    >
+                      {deletingProofId === p.id ? 'Removing…' : 'Remove'}
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Pickers per category */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {PROOF_CATEGORIES.map((cat) => (
+            <div key={cat.key}>
+              <label className="block text-sm font-medium text-gray-700">{cat.label}</label>
+              <p className="text-xs text-gray-400 mb-1.5 leading-snug min-h-8">{cat.hint}</p>
+              <label className="flex flex-col items-center justify-center gap-1 py-4 rounded-lg border-2
+                border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50/50
+                cursor-pointer transition-colors">
+                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="text-xs text-gray-500">Click to add</span>
+                <input
+                  type="file"
+                  multiple
+                  accept={cat.accept}
+                  className="hidden"
+                  onChange={(e) => { addProofFiles(cat.key, e.target.files, cat.allowed); e.target.value = ''; }}
+                />
+              </label>
+
+              {proofFiles[cat.key].length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {proofFiles[cat.key].map((f, i) => (
+                    <li key={i} className="flex items-center gap-2 text-xs bg-gray-50 border border-gray-200
+                      rounded px-2 py-1.5">
+                      <span className="truncate flex-1 text-gray-700" title={f.name}>{f.name}</span>
+                      <span className="text-gray-400 shrink-0">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                      <button
+                        type="button"
+                        onClick={() => removeProofFile(cat.key, i)}
+                        className="text-red-500 hover:text-red-700 shrink-0 font-bold"
+                        aria-label="Remove file"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+        {proofError && <p className="mt-2 text-xs text-red-600">{proofError}</p>}
       </div>
 
       {/* Actions */}

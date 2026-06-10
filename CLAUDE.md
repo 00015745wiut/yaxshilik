@@ -58,7 +58,7 @@ CommonJS (`require`/`module.exports`), Express 5. Layering: `routes → middlewa
 - **Controllers** ([server/controllers/](server/controllers/)) — every exported handler is wrapped in `asyncHandler` ([server/utils/asyncHandler.js](server/utils/asyncHandler.js)) so thrown errors reach the error middleware. Use parameterized queries (`$1, $2…`) — never string interpolation. Multi-step writes use an explicit `pool.connect()` client with `BEGIN`/`COMMIT`/`ROLLBACK` (see `markDonationPaid`, which `SELECT … FOR UPDATE`s the donation and case rows to credit a paid donation atomically).
 - **Middleware** ([server/middleware/](server/middleware/)):
   - `auth.js` — `authenticate` reads `Bearer` token, verifies JWT, sets `req.user = { id, role }`; `authorizeAdmin` requires `req.user.role === 'admin'`.
-  - `upload.js` — multer disk storage to `uploads/`, accepts JPEG/PNG/WebP, 5 MB limit, filename `${Date.now()}-${safe}`.
+  - `upload.js` — multer disk storage to `uploads/`, **field-aware** filter (50 MB limit): `image`/`proof_photos` accept images, `proof_documents` also accept PDF, `proof_videos` accept mp4/webm/mov. Exports the multer instance plus `PROOF_FIELDS` (field-name → proof type). The case form uses `upload.fields([...])`.
   - `errorHandler.js` — central error formatter. Maps multer size errors, file-type errors, JWT errors, and pg unique-violation (`23505` → 409). In dev it returns the message + stack; in production a generic message.
 - **Validation** lives in the route files using `express-validator` (`body`/`param`). Controllers call `validationResult(req)` and return `422 { errors }` when invalid. Auth login is rate-limited (15 attempts / 15 min) via `express-rate-limit`.
 
@@ -68,6 +68,7 @@ CommonJS (`require`/`module.exports`), Express 5. Layering: `routes → middlewa
 - `categories` (id, name UNIQUE, description)
 - `cases` (id, title, description, image_url, goal_amount, raised_amount, category_id → categories, status `active|completed|closed`, created_by → users, timestamps)
 - `donations` (id, user_id → users, case_id → cases ON DELETE CASCADE, amount, message, transaction_ref UNIQUE, created_at)
+- `case_proofs` (id, case_id → cases ON DELETE CASCADE, type `document|photo|video`, file_url, caption, created_at) — verification evidence shown publicly on a case
 
 Donating updates `cases.raised_amount`; when it reaches `goal_amount` the case auto-flips to `completed`. Deleting a case is a soft-delete (`status = 'closed'`). Money is `DECIMAL(12,2)`; controllers `parseFloat`/`parseInt` pg's string results before returning JSON.
 
@@ -87,7 +88,7 @@ React 19, ESM, function components + hooks, React Router v7, Tailwind v4 (via `@
 Base path `/api`. See README for the full table. Auth tiers: **—** public, **Bearer** any logged-in user, **Admin** admin only.
 
 - `auth`: `POST /register`, `POST /login`, `GET /me`
-- `cases`: `GET /` (filter `category_id`, `sort`=`most_funded|closest_to_goal|newest`, `search`), `GET /:id`, `POST /` (admin, multipart `image`), `PUT /:id` (admin), `DELETE /:id` (admin soft-close), `GET /admin/stats` (admin)
+- `cases`: `GET /` (filter `category_id`, `sort`=`most_funded|closest_to_goal|newest`, `search`; returns `proof_count`), `GET /:id` (returns `proofs[]`), `POST /` (admin, multipart `image` + proof files), `PUT /:id` (admin; appends new proofs), `DELETE /:id` (admin soft-close), `DELETE /:id/proofs/:proofId` (admin), `GET /admin/stats` (admin)
 - `donations`: `POST /checkout` (Bearer — start a payment), `GET /:id/status` (Bearer owner — poll/reconcile), `GET /my`, `GET /my/stats`, `GET /recent` (admin), `GET /case/:caseId` (admin)
 - `payments`: `POST /callback` (public, signature-verified — Multicard server-to-server)
 - `categories`: `GET /`
@@ -123,6 +124,16 @@ Donations are charged through the **Multicard** hosted-checkout gateway (Uzbek p
 - Multicard config lives in `server/services/multicardService.js`, driven by `MULTICARD_*` env vars (see `.env.example`). Token is cached in-process until ~1 min before expiry.
 
 To receive real callbacks in dev, expose the server publicly (e.g. ngrok) and set `SERVER_URL` accordingly; otherwise polling covers confirmation.
+
+## Case verification (proofs)
+
+To show donors a case is genuine, each case can carry **proof files** in three categories: `document` (PDF or scanned official/government letter), `photo`, and `video`. Admins attach them while creating/editing a case; they're stored in `case_proofs` and shown publicly on the case detail page.
+
+- **Upload** happens inside the normal case form (one submit). The form sends multipart fields `proof_documents`, `proof_photos`, `proof_videos` (each multiple) alongside the main `image`; the server maps field → `type` via `PROOF_FIELDS` and inserts rows in the same transaction as the case ([casesController.js](server/controllers/casesController.js) `collectProofs`/`insertProofs`).
+- **Edit appends**: `PUT /cases/:id` adds any newly uploaded proofs without touching existing ones; remove one with `DELETE /cases/:id/proofs/:proofId` (also best-effort unlinks the file from `uploads/`).
+- **Reads**: `GET /cases/:id` returns `proofs[]`; `GET /cases` returns `proof_count` per case (drives the "Verified" badge on [CaseCard](client/src/components/CaseCard.jsx)).
+- **Frontend**: pickers live in [CaseForm](client/src/components/CaseForm.jsx) (client-side type/size checks mirror the server); the public gallery is `ProofsSection` in [CaseDetailPage](client/src/pages/CaseDetailPage.jsx) — documents as links, photos as a thumbnail grid, videos as `<video>` players.
+- This is intentionally a lightweight, admin-curated trust signal (not identity/KYC verification).
 
 ## Notes / context
 

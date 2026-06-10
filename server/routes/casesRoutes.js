@@ -8,10 +8,19 @@ const {
   createCase,
   updateCase,
   deleteCase,
+  deleteCaseProof,
   getAdminStats,
 } = require('../controllers/casesController');
 
 const router = Router();
+
+// Case form accepts the main image plus categorised proof files.
+const caseUpload = upload.fields([
+  { name: 'image',           maxCount: 1  },
+  { name: 'proof_documents', maxCount: 10 },
+  { name: 'proof_photos',    maxCount: 10 },
+  { name: 'proof_videos',    maxCount: 5  },
+]);
 
 // Validation rules shared by create and update
 const caseValidation = [
@@ -54,7 +63,7 @@ router.post(
   '/',
   authenticate,
   authorizeAdmin,
-  upload.single('image'),
+  caseUpload,
   caseValidation,
   createCase
 );
@@ -63,7 +72,7 @@ router.put(
   '/:id',
   authenticate,
   authorizeAdmin,
-  upload.single('image'),
+  caseUpload,
   updateValidation,
   updateCase
 );
@@ -74,6 +83,15 @@ router.delete(
   authorizeAdmin,
   param('id').isInt().withMessage('Invalid case ID'),
   deleteCase
+);
+
+router.delete(
+  '/:id/proofs/:proofId',
+  authenticate,
+  authorizeAdmin,
+  param('id').isInt().withMessage('Invalid case ID'),
+  param('proofId').isInt().withMessage('Invalid proof ID'),
+  deleteCaseProof
 );
 
 module.exports = router;

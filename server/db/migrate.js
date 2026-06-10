@@ -62,6 +62,18 @@ async function migrate() {
     `);
     console.log('  ✓ donations');
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS case_proofs (
+        id          SERIAL PRIMARY KEY,
+        case_id     INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+        type        VARCHAR(20) NOT NULL CHECK (type IN ('document', 'photo', 'video')),
+        file_url    VARCHAR(500) NOT NULL,
+        caption     VARCHAR(200),
+        created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('  ✓ case_proofs');
+
     // Payment columns (idempotent — also upgrades pre-existing donations tables).
     // Default 'paid' so legacy/seed rows count as completed; the checkout flow
     // inserts new rows as 'pending' until the payment provider confirms them.
@@ -81,6 +93,7 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS idx_cases_category_id     ON cases(category_id);
       CREATE INDEX IF NOT EXISTS idx_cases_status          ON cases(status);
       CREATE INDEX IF NOT EXISTS idx_donations_status      ON donations(status);
+      CREATE INDEX IF NOT EXISTS idx_case_proofs_case_id   ON case_proofs(case_id);
     `);
     console.log('  ✓ indexes');
 

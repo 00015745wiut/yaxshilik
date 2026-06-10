@@ -8,6 +8,7 @@ import DonationConfirmModal from '../components/DonationConfirmModal';
 import { formatCurrency, formatDate, timeAgo } from '../utils/format';
 
 const PRESET_AMOUNTS = [10_000, 25_000, 50_000, 100_000];
+const SERVER_ORIGIN  = 'http://localhost:5000';
 
 const CATEGORY_GRADIENTS = {
   'Medical':          { gradient: 'from-red-100 to-red-200',       emoji: '❤️',  text: 'text-red-600'    },
@@ -212,6 +213,89 @@ function DonationForm({ caseData }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Proof & verification gallery (public)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ProofsSection({ proofs = [] }) {
+  if (proofs.length === 0) return null;
+
+  const documents = proofs.filter((p) => p.type === 'document');
+  const photos    = proofs.filter((p) => p.type === 'photo');
+  const videos    = proofs.filter((p) => p.type === 'video');
+  const url = (p) => `${SERVER_ORIGIN}${p.file_url}`;
+  const fileName = (p) => p.caption || p.file_url.split('/').pop();
+
+  return (
+    <section className="border border-green-200 bg-green-50/40 rounded-2xl p-5">
+      <h2 className="text-xl font-bold text-gray-800 mb-1 flex items-center gap-2">
+        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+        Proof &amp; Verification
+      </h2>
+      <p className="text-sm text-gray-500 mb-4">
+        These materials were reviewed and published by our team to confirm this case is genuine.
+      </p>
+
+      {documents.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Documents</h3>
+          <ul className="space-y-2">
+            {documents.map((p) => (
+              <li key={p.id}>
+                <a
+                  href={url(p)} target="_blank" rel="noreferrer"
+                  className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg px-3 py-2.5
+                    hover:border-blue-400 hover:shadow-sm transition-colors"
+                >
+                  <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-700 truncate flex-1">{fileName(p)}</span>
+                  <span className="text-xs text-blue-600 shrink-0 font-medium">View →</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {photos.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Photos</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {photos.map((p) => (
+              <a
+                key={p.id} href={url(p)} target="_blank" rel="noreferrer"
+                className="block aspect-square rounded-lg overflow-hidden border border-gray-200 hover:opacity-90 transition-opacity"
+              >
+                <img src={url(p)} alt="Proof" className="w-full h-full object-cover" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {videos.length > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Video</h3>
+          <div className="space-y-3">
+            {videos.map((p) => (
+              <video
+                key={p.id} src={url(p)} controls preload="metadata"
+                className="w-full rounded-lg border border-gray-200 bg-black max-h-80"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main page
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -246,7 +330,7 @@ export default function CaseDetailPage() {
 
   const {
     title, description, image_url, goal_amount, raised_amount,
-    category_name, status, created_at, recent_donations = [],
+    category_name, status, created_at, recent_donations = [], proofs = [],
   } = caseData;
 
   const placeholder = CATEGORY_GRADIENTS[category_name] ?? DEFAULT_GRADIENT;
@@ -297,6 +381,9 @@ export default function CaseDetailPage() {
               {description}
             </p>
           </div>
+
+          {/* Proof & Verification */}
+          <ProofsSection proofs={proofs} />
 
           {/* Recent Donations */}
           <section>

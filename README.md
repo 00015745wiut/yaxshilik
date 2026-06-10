@@ -148,9 +148,10 @@ yaxshilik/
 | GET    | /api/auth/me             | Bearer | Get current user profile        |
 | GET    | /api/cases               | —      | List cases (filter/sort/search) |
 | GET    | /api/cases/:id           | —      | Case detail + recent donations  |
-| POST   | /api/cases               | Admin  | Create a new case               |
-| PUT    | /api/cases/:id           | Admin  | Update a case                   |
+| POST   | /api/cases               | Admin  | Create a case (+ image & proof files) |
+| PUT    | /api/cases/:id           | Admin  | Update a case (appends new proofs) |
 | DELETE | /api/cases/:id           | Admin  | Close a case                    |
+| DELETE | /api/cases/:id/proofs/:proofId | Admin | Remove a proof from a case   |
 | GET    | /api/cases/admin/stats   | Admin  | Admin dashboard statistics      |
 | POST   | /api/donations/checkout  | Bearer | Start a payment (returns checkout_url) |
 | GET    | /api/donations/:id/status| Bearer | Poll a donation's payment status |
@@ -163,6 +164,16 @@ yaxshilik/
 | GET    | /api/health              | —      | Health check                    |
 
 ---
+
+## Case Verification (Proofs)
+
+Each charity case can include **proof** of why funds are needed, so donors can see it's genuine. While creating or editing a case, an admin uploads three kinds of evidence:
+
+- **Official documents** — PDF or scanned government/medical letters, invoices
+- **Photos** — images of the person or situation
+- **Video** — a short clip (up to 50 MB)
+
+The admin reviews the materials, attaches them in the case form, and publishes. The proofs then appear in a **Proof & Verification** section on the public case page (documents as links, photos as a gallery, videos as players), and cases with proofs show a **Verified** badge in listings. Proofs can be removed individually when editing a case.
 
 ## Payments (Multicard / Rahmat)
 

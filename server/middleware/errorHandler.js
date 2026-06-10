@@ -8,11 +8,14 @@ function errorHandler(err, req, res, next) {
   console.error(`[${timestamp}] ${req.method} ${req.originalUrl} — ${err.message}`);
   if (isDev) console.error(err.stack);
 
-  // Multer file errors (wrong type / size)
+  // Multer file errors (wrong type / size / unexpected field)
   if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).json({ error: 'File is too large. Maximum size is 5 MB.' });
+    return res.status(400).json({ error: 'File is too large. Maximum size is 50 MB.' });
   }
-  if (err.message && err.message.startsWith('Only JPEG')) {
+  if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({ error: 'Too many files or an unexpected file field.' });
+  }
+  if (err.code === 'INVALID_FILE_TYPE') {
     return res.status(400).json({ error: err.message });
   }
 

@@ -6,6 +6,7 @@ const casesService = {
   createCase:    (formData)     => api.post('/cases',              formData),
   updateCase:    (id, formData) => api.put(`/cases/${id}`,         formData),
   deleteCase:    (id)           => api.delete(`/cases/${id}`),
+  deleteProof:   (id, proofId)  => api.delete(`/cases/${id}/proofs/${proofId}`),
   getAdminStats: ()             => api.get('/cases/admin/stats'),
 };
 
