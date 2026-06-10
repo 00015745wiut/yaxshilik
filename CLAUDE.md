@@ -135,8 +135,15 @@ To show donors a case is genuine, each case can carry **proof files** in three c
 - **Frontend**: pickers live in [CaseForm](client/src/components/CaseForm.jsx) (client-side type/size checks mirror the server); the public gallery is `ProofsSection` in [CaseDetailPage](client/src/pages/CaseDetailPage.jsx) — documents as links, photos as a thumbnail grid, videos as `<video>` players.
 - This is intentionally a lightweight, admin-curated trust signal (not identity/KYC verification).
 
+## Deployment (single service)
+
+The app is built to deploy as **one service**: in production Express serves the built client (`client/dist`) plus a SPA fallback from the same origin ([server.js](server/server.js), gated on `NODE_ENV=production`). Because client and server share an origin, all client URLs are **relative** — `api.js` uses `baseURL: '/api'` and images use `/uploads/...`. In dev, [vite.config.js](client/vite.config.js) proxies `/api` and `/uploads` to `http://localhost:5000`, so the same relative URLs work with the client on `:5173`.
+
+- Root scripts: `npm start` → runs the server; `npm run railway:build` installs both halves (forcing the client's dev deps so Vite is available even when `NODE_ENV=production`) and builds the client.
+- For deploys, set `SERVER_URL` and `CLIENT_URL` to the public origin so the Multicard callback is reachable and `return_url`s are correct. See README "Payments" / "Deploy on Railway".
+- `server/uploads/` is on the local/ephemeral filesystem — on platforms with ephemeral disks (e.g. Railway without a volume), uploaded case images and proof files are wiped on redeploy. Acceptable for demos; attach a volume or external storage for persistence.
+
 ## Notes / context
 
-- `client/src/services/api.js` hardcodes `baseURL: http://localhost:5000/api` rather than reading an env var — adjust for non-local deployments. (The case-image `<img>` src in a few pages similarly hardcodes the server origin.)
 - `client/.env` still carries an unused Stripe test key from an earlier exploration; the live integration is Multicard, not Stripe.
 - Uploaded files in `server/uploads/` are gitignored (only `.gitkeep` is tracked).

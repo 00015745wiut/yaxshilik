@@ -5,7 +5,7 @@ const MAX_FILE_SIZE   = 5 * 1024 * 1024;
 const ALLOWED_TYPES   = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const STATUS_OPTIONS  = ['active', 'completed', 'closed'];
 
-const SERVER_ORIGIN     = 'http://localhost:5000';
+const SERVER_ORIGIN     = ''; // same-origin; /uploads is proxied in dev, served by Express in prod
 const PROOF_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const PROOF_DOC_TYPES   = [...PROOF_IMAGE_TYPES, 'application/pdf'];
 const PROOF_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
@@ -66,7 +66,7 @@ export default function CaseForm({
   const [touched, setTouched]       = useState({});
   const [imageFile, setImageFile]   = useState(null);
   const [imagePreview, setImagePreview] = useState(initialData.image_url
-    ? `http://localhost:5000${initialData.image_url}` : null);
+    ? `${SERVER_ORIGIN}${initialData.image_url}` : null);
   const [imageError, setImageError] = useState('');
   const [dragging, setDragging]     = useState(false);
   const [submitting, setSubmitting] = useState(false);

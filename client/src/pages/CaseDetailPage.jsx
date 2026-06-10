@@ -8,7 +8,7 @@ import DonationConfirmModal from '../components/DonationConfirmModal';
 import { formatCurrency, formatDate, timeAgo } from '../utils/format';
 
 const PRESET_AMOUNTS = [10_000, 25_000, 50_000, 100_000];
-const SERVER_ORIGIN  = 'http://localhost:5000';
+const SERVER_ORIGIN  = ''; // same-origin; /uploads is proxied in dev, served by Express in prod
 
 const CATEGORY_GRADIENTS = {
   'Medical':          { gradient: 'from-red-100 to-red-200',       emoji: '❤️',  text: 'text-red-600'    },
@@ -347,7 +347,7 @@ export default function CaseDetailPage() {
           <div className="aspect-video rounded-2xl overflow-hidden shadow-md">
             {image_url ? (
               <img
-                src={`http://localhost:5000${image_url}`}
+                src={image_url}
                 alt={title}
                 className="w-full h-full object-cover"
               />

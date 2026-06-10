@@ -48,7 +48,7 @@ export default function CaseCard({ caseData }) {
       <div className="relative aspect-video overflow-hidden">
         {image_url ? (
           <img
-            src={`http://localhost:5000${image_url}`}
+            src={image_url}
             alt={title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />

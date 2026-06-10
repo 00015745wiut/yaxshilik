@@ -185,7 +185,7 @@ export default function DonorDashboard() {
                 <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-gray-100">
                   {d.case_image_url ? (
                     <img
-                      src={`http://localhost:5000${d.case_image_url}`}
+                      src={d.case_image_url}
                       alt={d.case_title}
                       className="w-full h-full object-cover"
                     />

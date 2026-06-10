@@ -59,6 +59,18 @@ app.use('/api/*path', (_req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
+// ── Serve the built client (production single-service deploy) ─────────────────
+// Express hosts client/dist on the same origin, so the SPA uses relative
+// /api and /uploads URLs. Any non-API, non-uploads GET falls back to index.html
+// so client-side routes (e.g. /cases/5, /donations/return) work on refresh.
+if (process.env.NODE_ENV === 'production') {
+  const clientDist = path.join(__dirname, '..', 'client', 'dist');
+  app.use(express.static(clientDist));
+  app.get(/^\/(?!api\/|uploads\/).*/, (_req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
+
 // ── Global error handler (must be last) ──────────────────────────────────────
 app.use(errorHandler);
 
